@@ -8,8 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import Users from "./Users";
+import type { CurrentUser } from "../App";
 
 const PURCHASES_URL = "https://functions.poehali.dev/ec7ab38c-b81f-4f32-886e-907af780fddf";
 const REFS_URL = "https://functions.poehali.dev/f306d1bc-8c13-4391-bebe-54d07aeec2f8";
@@ -55,8 +58,19 @@ const emptyPurchase: Omit<Purchase, "id" | "product_type_name" | "competitor_nam
   is_rejected: false,
 };
 
-export default function App() {
+interface IndexProps {
+  sessionId: string;
+  currentUser: CurrentUser;
+  onLogout: () => void;
+}
+
+const ROLE_LABELS: Record<string, string> = { admin: "Администратор", editor: "Редактор", viewer: "Пользователь" };
+
+export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
   const { toast } = useToast();
+  const canEdit = currentUser.role === "admin" || currentUser.role === "editor";
+  const isAdmin = currentUser.role === "admin";
+  const [view, setView] = useState<"purchases" | "users">("purchases");
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -100,8 +114,12 @@ export default function App() {
   useEffect(() => { loadPurchases(); }, [loadPurchases]);
   useEffect(() => { loadRefs(); }, [loadRefs]);
 
-  const openAdd = () => { setForm({ ...emptyPurchase }); setDialogMode("add"); setDialogOpen(true); };
+  const openAdd = () => {
+    if (!canEdit) return;
+    setForm({ ...emptyPurchase }); setDialogMode("add"); setDialogOpen(true);
+  };
   const openEdit = () => {
+    if (!canEdit) return;
     if (!selectedRow) { toast({ title: "Выберите закупку" }); return; }
     setForm({ ...selectedRow }); setDialogMode("edit"); setDialogOpen(true);
   };
@@ -169,13 +187,40 @@ export default function App() {
 
   const setField = (key: string, val: unknown) => setForm((prev: Partial<Purchase>) => ({ ...prev, [key]: val }));
 
+  if (view === "users") {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <header className="bg-white border-b shadow-sm">
+          <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary text-primary-foreground rounded-lg p-2">
+                <Icon name="TrendingUp" size={20} />
+              </div>
+              <div>
+                <h1 className="font-bold text-lg text-slate-900 leading-none">Анализ цен</h1>
+                <p className="text-xs text-slate-500">Управление закупками</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setView("purchases")}>
+                <Icon name="ArrowLeft" size={15} className="mr-1" />
+                К закупкам
+              </Button>
+            </div>
+          </div>
+        </header>
+        <Users sessionId={sessionId} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b shadow-sm">
         <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-blue-600 text-white rounded-lg p-2">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary text-primary-foreground rounded-lg p-2">
               <Icon name="TrendingUp" size={20} />
             </div>
             <div>
@@ -183,10 +228,40 @@ export default function App() {
               <p className="text-xs text-slate-500">Управление закупками</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={openRefs}>
-            <Icon name="BookOpen" size={16} className="mr-1" />
-            Справочники
-          </Button>
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={openRefs}>
+                <Icon name="BookOpen" size={16} className="mr-1" />
+                Справочники
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Icon name="UserCircle" size={16} />
+                  <span className="hidden sm:inline">{currentUser.full_name || currentUser.username}</span>
+                  <Icon name="ChevronDown" size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-medium text-slate-900">{currentUser.full_name || currentUser.username}</p>
+                  <p className="text-xs text-slate-500">{ROLE_LABELS[currentUser.role] || currentUser.role}</p>
+                </div>
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => setView("users")}>
+                    <Icon name="Users" size={14} className="mr-2" />
+                    Пользователи
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
+                  <Icon name="LogOut" size={14} className="mr-2" />
+                  Выйти
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
@@ -214,8 +289,9 @@ export default function App() {
               ))}
             </SelectContent>
           </Select>
+          {canEdit && (
           <div className="flex gap-2">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={openAdd}>
+            <Button size="sm" className="text-white" onClick={openAdd}>
               <Icon name="Plus" size={16} className="mr-1" />
               Добавить
             </Button>
@@ -229,6 +305,7 @@ export default function App() {
               Удалить
             </Button>
           </div>
+          )}
         </div>
 
         {/* Table */}
@@ -388,12 +465,12 @@ export default function App() {
             {dialogMode !== "view" ? (
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave}>Сохранить</Button>
+                <Button className="text-white" onClick={handleSave}>Сохранить</Button>
               </>
             ) : (
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Закрыть</Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setDialogMode("edit")}>Редактировать</Button>
+                {canEdit && <Button className="text-white" onClick={() => setDialogMode("edit")}>Редактировать</Button>}
               </>
             )}
           </DialogFooter>
