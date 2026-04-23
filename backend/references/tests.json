@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Get executors",
+      "method": "GET",
+      "path": "/?ref=executors",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

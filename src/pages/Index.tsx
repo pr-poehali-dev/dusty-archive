@@ -1,407 +1,491 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Code, Zap, Users, Github, Linkedin, Mail, ExternalLink, Star } from "lucide-react"
+import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Icon from "@/components/ui/icon";
+import { useToast } from "@/hooks/use-toast";
 
-export default function Portfolio() {
+const PURCHASES_URL = "https://functions.poehali.dev/ec7ab38c-b81f-4f32-886e-907af780fddf";
+const REFS_URL = "https://functions.poehali.dev/f306d1bc-8c13-4391-bebe-54d07aeec2f8";
+
+interface ProductType { id: number; name: string; }
+interface Competitor { id: number; name: string; }
+interface Executor { id: number; full_name: string; }
+interface Purchase {
+  id: number;
+  name: string;
+  product_type_id: number | null;
+  product_type_name: string | null;
+  competitor_id: number | null;
+  competitor_name: string | null;
+  submission_date: string | null;
+  quantity: number | null;
+  competitor_price: number | null;
+  our_price: number | null;
+  percent: number | null;
+  our_coefficient: number | null;
+  note: string | null;
+  executor_id: number | null;
+  executor_name: string | null;
+  purchase_link: string | null;
+  is_important: boolean;
+  is_rejected: boolean;
+}
+
+const emptyPurchase: Omit<Purchase, "id" | "product_type_name" | "competitor_name" | "executor_name"> = {
+  name: "",
+  product_type_id: null,
+  competitor_id: null,
+  submission_date: null,
+  quantity: null,
+  competitor_price: null,
+  our_price: null,
+  percent: null,
+  our_coefficient: null,
+  note: null,
+  executor_id: null,
+  purchase_link: null,
+  is_important: false,
+  is_rejected: false,
+};
+
+export default function App() {
+  const { toast } = useToast();
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<Purchase | null>(null);
+
+  const [refs, setRefs] = useState<{ product_types: ProductType[]; competitors: Competitor[]; executors: Executor[] }>({
+    product_types: [], competitors: [], executors: [],
+  });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"add" | "edit" | "view">("add");
+  const [form, setForm] = useState<Partial<Purchase>>(emptyPurchase as Partial<Purchase>);
+
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [refsOpen, setRefsOpen] = useState(false);
+  const [refsTab, setRefsTab] = useState("executors");
+
+  const [refItems, setRefItems] = useState<Record<string, string | number>[]>([]);
+  const [refEdit, setRefEdit] = useState<{ id: number | null; value: string }>({ id: null, value: "" });
+
+  const loadPurchases = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (filterType !== "all") params.set("product_type_id", filterType);
+    const res = await fetch(`${PURCHASES_URL}?${params}`);
+    const data = await res.json();
+    setPurchases(data.purchases || []);
+    setTotal(data.total || 0);
+    setLoading(false);
+  }, [search, filterType]);
+
+  const loadRefs = useCallback(async () => {
+    const res = await fetch(`${PURCHASES_URL}?action=refs`);
+    const data = await res.json();
+    setRefs(data);
+  }, []);
+
+  useEffect(() => { loadPurchases(); }, [loadPurchases]);
+  useEffect(() => { loadRefs(); }, [loadRefs]);
+
+  const openAdd = () => { setForm({ ...emptyPurchase }); setDialogMode("add"); setDialogOpen(true); };
+  const openEdit = () => {
+    if (!selectedRow) { toast({ title: "Выберите закупку" }); return; }
+    setForm({ ...selectedRow }); setDialogMode("edit"); setDialogOpen(true);
+  };
+  const openView = (row: Purchase) => { setForm({ ...row }); setDialogMode("view"); setDialogOpen(true); };
+
+  const handleSave = async () => {
+    if (!form.name) { toast({ title: "Укажите наименование закупки", variant: "destructive" }); return; }
+    const payload = { ...form };
+    if (dialogMode === "add") {
+      await fetch(PURCHASES_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      toast({ title: "Закупка добавлена" });
+    } else {
+      await fetch(`${PURCHASES_URL}?id=${form.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      toast({ title: "Закупка обновлена" });
+    }
+    setDialogOpen(false);
+    setSelectedRow(null);
+    loadPurchases();
+  };
+
+  const handleDelete = async () => {
+    if (!selectedRow) return;
+    await fetch(`${PURCHASES_URL}?id=${selectedRow.id}`, { method: "DELETE" });
+    toast({ title: "Закупка удалена" });
+    setDeleteConfirm(false);
+    setSelectedRow(null);
+    loadPurchases();
+  };
+
+  const loadRefItems = async (tab: string) => {
+    setRefsTab(tab);
+    const res = await fetch(`${REFS_URL}?ref=${tab}`);
+    const data = await res.json();
+    setRefItems(data);
+    setRefEdit({ id: null, value: "" });
+  };
+
+  const openRefs = () => { setRefsOpen(true); loadRefItems("executors"); };
+
+  const handleRefSave = async () => {
+    const fieldMap: Record<string, string> = { executors: "full_name", competitors: "name", product_types: "name" };
+    const field = fieldMap[refsTab];
+    if (refEdit.id) {
+      await fetch(`${REFS_URL}?ref=${refsTab}&id=${refEdit.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: refEdit.value })
+      });
+    } else {
+      await fetch(`${REFS_URL}?ref=${refsTab}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: refEdit.value })
+      });
+    }
+    setRefEdit({ id: null, value: "" });
+    loadRefItems(refsTab);
+    loadRefs();
+  };
+
+  const handleRefDelete = async (id: number) => {
+    await fetch(`${REFS_URL}?ref=${refsTab}&id=${id}`, { method: "DELETE" });
+    loadRefItems(refsTab);
+    loadRefs();
+  };
+
+  const getRefLabel = (tab: string) => ({ executors: "Исполнители", competitors: "Конкуренты", product_types: "Типы продукции" }[tab] || tab);
+  const getRefField = (tab: string, item: Record<string, string | number>) => tab === "executors" ? String(item.full_name) : String(item.name);
+
+  const setField = (key: string, val: unknown) => setForm((prev: Partial<Purchase>) => ({ ...prev, [key]: val }));
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="font-bold text-xl text-slate-900">CodePulse</div>
-            <div className="hidden md:flex space-x-8">
-              <a href="#about" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Обо мне
-              </a>
-              <a href="#services" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Услуги
-              </a>
-              <a href="#projects" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Проекты
-              </a>
-              <a href="#contact" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Контакты
-              </a>
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b shadow-sm">
+        <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-blue-600 text-white rounded-lg p-2">
+              <Icon name="TrendingUp" size={20} />
             </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <Badge className="mb-4 bg-blue-100 text-blue-800 hover:bg-blue-200">Открыт для проектов</Badge>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-                Помогаю разработчикам <span className="text-blue-600">создавать</span> веб-приложения быстрее
-              </h1>
-              <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-                Специализируюсь на создании современных, масштабируемых веб-приложений с использованием
-                передовых технологий. Превращу ваши идеи в мощные цифровые решения.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-                  Начать проект
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="lg">
-                  Смотреть работы
-                </Button>
-              </div>
+              <h1 className="font-bold text-lg text-slate-900 leading-none">Анализ цен</h1>
+              <p className="text-xs text-slate-500">Управление закупками</p>
             </div>
-            <div className="relative">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Code className="h-6 w-6" />
-                    <span className="font-semibold">Современный стек</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Zap className="h-6 w-6" />
-                    <span className="font-semibold">Быстрая разработка</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Users className="h-6 w-6" />
-                    <span className="font-semibold">Решения для разработчиков</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={openRefs}>
+            <Icon name="BookOpen" size={16} className="mr-1" />
+            Справочники
+          </Button>
+        </div>
+      </header>
+
+      {/* Main */}
+      <main className="max-w-screen-xl mx-auto px-4 py-6 flex-1 w-full">
+        {/* Toolbar */}
+        <div className="flex flex-wrap gap-3 mb-4 items-center">
+          <div className="relative flex-1 min-w-[220px]">
+            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Поиск по наименованию..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Тип продукции" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы</SelectItem>
+              {refs.product_types.map(t => (
+                <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-2">
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={openAdd}>
+              <Icon name="Plus" size={16} className="mr-1" />
+              Добавить
+            </Button>
+            <Button size="sm" variant="outline" onClick={openEdit}>
+              <Icon name="Pencil" size={16} className="mr-1" />
+              Изменить
+            </Button>
+            <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+              onClick={() => { if (!selectedRow) { toast({ title: "Выберите закупку" }); return; } setDeleteConfirm(true); }}>
+              <Icon name="Trash2" size={16} className="mr-1" />
+              Удалить
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* About Section */}
-      <section id="about" className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Обо мне</h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Увлеченный full-stack разработчик с экспертизой в современных веб-технологиях
-            </p>
-          </div>
+        {/* Table */}
+        <div className="bg-white rounded-xl border shadow-sm overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-slate-50">
+                <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[220px]">Наименование</th>
+                <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Тип продукции</th>
+                <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Конкурент</th>
+                <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[110px]">Дата подачи</th>
+                <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[80px]">Кол-во</th>
+                <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Цена конк.</th>
+                <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Наша цена</th>
+                <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[70px]">%</th>
+                <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[150px]">Исполнитель</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Загрузка...</td></tr>
+              )}
+              {!loading && purchases.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Закупки не найдены</td></tr>
+              )}
+              {purchases.map(p => {
+                const isImportant = p.is_important;
+                const isRejected = p.is_rejected;
+                const bg = isImportant ? "bg-green-50 hover:bg-green-100" : isRejected ? "bg-red-50 hover:bg-red-100" : "hover:bg-slate-50";
+                const selected = selectedRow?.id === p.id ? "ring-2 ring-inset ring-blue-400" : "";
+                return (
+                  <tr
+                    key={p.id}
+                    className={`border-b cursor-pointer transition-colors ${bg} ${selected}`}
+                    onClick={() => setSelectedRow(p.id === selectedRow?.id ? null : p)}
+                    onDoubleClick={() => openView(p)}
+                  >
+                    <td className="px-4 py-2.5 font-medium text-slate-900 max-w-[260px] truncate">
+                      {p.name}
+                      {p.is_important && <Badge className="ml-2 bg-green-200 text-green-800 text-xs">Важное</Badge>}
+                      {p.is_rejected && <Badge className="ml-2 bg-red-200 text-red-800 text-xs">Отклонено</Badge>}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-600">{p.product_type_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-slate-600">{p.competitor_name || "—"}</td>
+                    <td className="px-3 py-2.5 text-slate-600">{p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{p.quantity != null ? Number(p.quantity).toLocaleString("ru-RU") : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{p.competitor_price != null ? Number(p.competitor_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{p.our_price != null ? Number(p.our_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-slate-600">{p.percent != null ? `${Number(p.percent).toFixed(2)}%` : "—"}</td>
+                    <td className="px-3 py-2.5 text-slate-600">{p.executor_name || "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        {/* Footer counter */}
+        <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+          <Icon name="Database" size={14} />
+          Всего закупок в базе: <span className="font-semibold text-slate-700">{total}</span>
+        </div>
+      </main>
+
+      {/* Purchase Dialog (add / edit / view) */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogMode === "add" ? "Добавить закупку" : dialogMode === "edit" ? "Редактировать закупку" : "Карточка закупки"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2">
+              <Label>Наименование закупки *</Label>
+              <Input value={form.name || ""} onChange={e => setField("name", e.target.value)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
             <div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-6">Создаю будущее веб-разработки</h3>
-              <p className="text-slate-600 mb-6 leading-relaxed">
-                За 5+ лет опыта в веб-разработке я помог десяткам разработчиков и стартапов
-                воплотить их идеи в жизнь. Мой фокус — создание эффективных, масштабируемых
-                и поддерживаемых решений с использованием актуальных технологий.
-              </p>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <h4 className="font-semibold text-slate-900 mb-2">Frontend</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">React</Badge>
-                    <Badge variant="secondary">Next.js</Badge>
-                    <Badge variant="secondary">TypeScript</Badge>
-                    <Badge variant="secondary">Tailwind</Badge>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-slate-900 mb-2">Backend</h4>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Node.js</Badge>
-                    <Badge variant="secondary">Python</Badge>
-                    <Badge variant="secondary">PostgreSQL</Badge>
-                    <Badge variant="secondary">MongoDB</Badge>
-                  </div>
-                </div>
-              </div>
+              <Label>Тип продукции</Label>
+              <Select value={form.product_type_id ? String(form.product_type_id) : ""} onValueChange={v => setField("product_type_id", v ? Number(v) : null)} disabled={dialogMode === "view"}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Выберите тип" /></SelectTrigger>
+                <SelectContent>
+                  {refs.product_types.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="relative">
-              <img
-                src="/developer-workspace.png"
-                alt="Рабочее место разработчика"
-                className="rounded-2xl shadow-lg w-full max-w-[400px] h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section id="services" className="py-20 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Услуги</h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Полный спектр услуг веб-разработки для ускорения вашего проекта
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Code className="h-6 w-6 text-blue-600" />
-                </div>
-                <CardTitle>Full-Stack разработка</CardTitle>
-                <CardDescription>
-                  Комплексная разработка веб-приложений с использованием современных фреймворков и лучших практик.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li>* React/Next.js приложения</li>
-                  <li>* Разработка и интеграция API</li>
-                  <li>* Проектирование баз данных</li>
-                  <li>* Аутентификация и безопасность</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                  <Zap className="h-6 w-6 text-green-600" />
-                </div>
-                <CardTitle>Оптимизация</CardTitle>
-                <CardDescription>Ускорение существующих приложений и улучшение пользовательского опыта.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li>* Code Splitting и Lazy Loading</li>
-                  <li>* Оптимизация размера бандла</li>
-                  <li>* SEO и Core Web Vitals</li>
-                  <li>* Мониторинг производительности</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-purple-600" />
-                </div>
-                <CardTitle>Менторство</CardTitle>
-                <CardDescription>Индивидуальное наставничество для развития навыков разработчиков.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-slate-600">
-                  <li>* Code Review и лучшие практики</li>
-                  <li>* Планирование архитектуры</li>
-                  <li>* Развитие карьеры</li>
-                  <li>* Подготовка к собеседованиям</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Projects Section */}
-      <section id="projects" className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Избранные проекты</h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Недавние работы, которые помогли разработчикам создать отличные приложения
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8">
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
-              <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
-                <img
-                  src="/modern-web-dashboard.png"
-                  alt="SaaS дашборд"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle>SaaS-платформа</CardTitle>
-                    <CardDescription>
-                      Комплексный дашборд для управления SaaS-приложениями с аналитикой в реальном времени.
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon">
-                      <Github className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="outline">Next.js</Badge>
-                  <Badge variant="outline">TypeScript</Badge>
-                  <Badge variant="outline">Prisma</Badge>
-                  <Badge variant="outline">Tailwind</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>В топе Product Hunt</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
-              <div className="relative h-48 bg-gradient-to-r from-green-500 to-blue-600">
-                <img
-                  src="/ecommerce-mobile-app.png"
-                  alt="Мобильное приложение"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle>E-commerce приложение</CardTitle>
-                    <CardDescription>
-                      React Native приложение с удобным шопингом и интеграцией платежей.
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon">
-                      <Github className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <Badge variant="outline">React Native</Badge>
-                  <Badge variant="outline">Node.js</Badge>
-                  <Badge variant="outline">MongoDB</Badge>
-                  <Badge variant="outline">Stripe</Badge>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span>10 000+ загрузок</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-20 bg-slate-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Создадим что-то потрясающее</h2>
-            <p className="text-xl text-slate-300 max-w-3xl mx-auto">
-              Готовы ускорить процесс разработки? Давайте обсудим ваш проект.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-2xl font-bold mb-6">Связаться со мной</h3>
-              <p className="text-slate-300 mb-8 leading-relaxed">
-                Будь то стартап, которому нужен MVP, или компания, желающая модернизировать
-                технологический стек — я помогу вам добиться успеха.
-              </p>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Mail className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Email</p>
-                    <p className="text-slate-300">hello@example.com</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Github className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">GitHub</p>
-                    <p className="text-slate-300">@codepulse</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <Linkedin className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">LinkedIn</p>
-                    <p className="text-slate-300">@codepulse-dev</p>
-                  </div>
-                </div>
+              <Label>Конкурент</Label>
+              <Select value={form.competitor_id ? String(form.competitor_id) : ""} onValueChange={v => setField("competitor_id", v ? Number(v) : null)} disabled={dialogMode === "view"}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Выберите конкурента" /></SelectTrigger>
+                <SelectContent>
+                  {refs.competitors.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Дата подачи</Label>
+              <Input type="date" value={form.submission_date?.slice(0, 10) || ""} onChange={e => setField("submission_date", e.target.value || null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>Количество</Label>
+              <Input type="number" value={form.quantity ?? ""} onChange={e => setField("quantity", e.target.value ? Number(e.target.value) : null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>Стоимость конкурента без НДС</Label>
+              <Input type="number" value={form.competitor_price ?? ""} onChange={e => setField("competitor_price", e.target.value ? Number(e.target.value) : null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>Наша стоимость без НДС</Label>
+              <Input type="number" value={form.our_price ?? ""} onChange={e => setField("our_price", e.target.value ? Number(e.target.value) : null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>%</Label>
+              <Input type="number" value={form.percent ?? ""} onChange={e => setField("percent", e.target.value ? Number(e.target.value) : null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>Наш коэффициент</Label>
+              <Input type="number" value={form.our_coefficient ?? ""} onChange={e => setField("our_coefficient", e.target.value ? Number(e.target.value) : null)} disabled={dialogMode === "view"} className="mt-1" />
+            </div>
+            <div>
+              <Label>Исполнитель</Label>
+              <Select value={form.executor_id ? String(form.executor_id) : ""} onValueChange={v => setField("executor_id", v ? Number(v) : null)} disabled={dialogMode === "view"}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Выберите исполнителя" /></SelectTrigger>
+                <SelectContent>
+                  {refs.executors.map(e => <SelectItem key={e.id} value={String(e.id)}>{e.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>Ссылка на закупку</Label>
+              <Input value={form.purchase_link || ""} onChange={e => setField("purchase_link", e.target.value || null)} disabled={dialogMode === "view"} className="mt-1" placeholder="https://..." />
+            </div>
+            <div className="col-span-2">
+              <Label>Примечание</Label>
+              <Textarea value={form.note || ""} onChange={e => setField("note", e.target.value || null)} disabled={dialogMode === "view"} className="mt-1" rows={3} />
+            </div>
+            <div className="col-span-2 flex gap-6">
+              <div className="flex items-center gap-2">
+                <Checkbox id="important" checked={!!form.is_important} onCheckedChange={v => setField("is_important", v)} disabled={dialogMode === "view"} />
+                <Label htmlFor="important" className="cursor-pointer">Пометить как важное</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="rejected" checked={!!form.is_rejected} onCheckedChange={v => setField("is_rejected", v)} disabled={dialogMode === "view"} />
+                <Label htmlFor="rejected" className="cursor-pointer">Отклонили</Label>
               </div>
             </div>
-
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle className="text-white">Начать проект</CardTitle>
-                <CardDescription className="text-slate-300">
-                  Расскажите о проекте, и обсудим, как я могу помочь.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Имя</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Иван"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Фамилия</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Иванов"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-                  <input
-                    type="email"
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="ivan@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">О проекте</label>
-                  <textarea
-                    rows={4}
-                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Расскажите о вашем проекте..."
-                  />
-                </div>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  Отправить
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
+            {dialogMode === "view" && form.purchase_link && (
+              <div className="col-span-2">
+                <a href={form.purchase_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                  <Icon name="ExternalLink" size={14} />
+                  Открыть ссылку на закупку
+                </a>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+          <DialogFooter>
+            {dialogMode !== "view" ? (
+              <>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave}>Сохранить</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Закрыть</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setDialogMode("edit")}>Редактировать</Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Footer */}
-      <footer className="bg-slate-950 text-slate-400 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="font-bold text-xl text-white mb-4 md:mb-0">CodePulse</div>
-            <p className="text-center md:text-right">
-              2024 CodePulse. Помогаю разработчикам создавать быстрые и качественные веб-приложения.
-            </p>
-          </div>
-        </div>
-      </footer>
+      {/* Delete Confirm */}
+      <Dialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Удалить закупку?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">Вы уверены, что хотите удалить закупку <span className="font-semibold">«{selectedRow?.name}»</span>? Это действие необратимо.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(false)}>Отмена</Button>
+            <Button variant="destructive" onClick={handleDelete}>Удалить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refs Dialog */}
+      <Dialog open={refsOpen} onOpenChange={setRefsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Справочники</DialogTitle>
+          </DialogHeader>
+          <Tabs value={refsTab} onValueChange={loadRefItems}>
+            <TabsList className="w-full">
+              <TabsTrigger value="executors" className="flex-1">Исполнители</TabsTrigger>
+              <TabsTrigger value="competitors" className="flex-1">Конкуренты</TabsTrigger>
+              <TabsTrigger value="product_types" className="flex-1">Типы продукции</TabsTrigger>
+            </TabsList>
+            {["executors", "competitors", "product_types"].map(tab => (
+              <TabsContent key={tab} value={tab} className="space-y-3">
+                <div className="text-sm font-medium text-slate-700 mt-2">{getRefLabel(tab)}</div>
+                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                  {refItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between gap-2 p-2 bg-slate-50 rounded-lg">
+                      {refEdit.id === item.id ? (
+                        <Input value={refEdit.value} onChange={e => setRefEdit(prev => ({ ...prev, value: e.target.value }))} className="h-7 text-sm" autoFocus />
+                      ) : (
+                        <span className="text-sm text-slate-800">{getRefField(tab, item)}</span>
+                      )}
+                      <div className="flex gap-1 shrink-0">
+                        {refEdit.id === item.id ? (
+                          <>
+                            <Button size="sm" className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRefSave}>
+                              <Icon name="Check" size={14} />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setRefEdit({ id: null, value: "" })}>
+                              <Icon name="X" size={14} />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => setRefEdit({ id: item.id, value: getRefField(tab, item) })}>
+                              <Icon name="Pencil" size={14} />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-red-600 hover:text-red-700" onClick={() => handleRefDelete(item.id)}>
+                              <Icon name="Trash2" size={14} />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {refItems.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">Список пуст</p>}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  {refEdit.id === null && (
+                    <>
+                      <Input
+                        placeholder={`Добавить ${tab === "executors" ? "ФИО" : "наименование"}...`}
+                        value={refEdit.value}
+                        onChange={e => setRefEdit(prev => ({ ...prev, value: e.target.value }))}
+                        className="h-8 text-sm"
+                        onKeyDown={e => { if (e.key === "Enter") handleRefSave(); }}
+                      />
+                      <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRefSave}>
+                        <Icon name="Plus" size={14} />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefsOpen(false)}>Закрыть</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

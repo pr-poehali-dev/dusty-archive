@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Get purchases list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get refs",
+      "method": "GET",
+      "path": "/?action=refs",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
