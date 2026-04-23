@@ -164,6 +164,23 @@ export default function PurchaseDialog({
               <Input type="number" value={form.our_coefficient ?? ""} onChange={e => setField("our_coefficient", e.target.value ? Number(e.target.value) : null)} disabled={disabled} className="mt-1" />
             </div>
 
+            {/* Коэффициент конкурента — только в режиме просмотра, вычисляемый */}
+            {mode === "view" && (
+              <div className="col-span-2">
+                <Label className="text-slate-500">Коэффициент конкурента (авто)</Label>
+                <Input
+                  type="number"
+                  value={
+                    form.competitor_price && form.our_coefficient && form.our_price
+                      ? Math.round((form.competitor_price * form.our_coefficient / form.our_price) * 10000) / 10000
+                      : ""
+                  }
+                  disabled
+                  className="mt-1 bg-slate-50"
+                />
+              </div>
+            )}
+
             {/* Исполнитель */}
             <div>
               <Label>Исполнитель</Label>
@@ -185,17 +202,19 @@ export default function PurchaseDialog({
               <Textarea value={form.note || ""} onChange={e => setField("note", e.target.value || null)} disabled={disabled} className="mt-1" rows={3} />
             </div>
 
-            {/* Чекбоксы */}
-            <div className="col-span-2 flex gap-6">
-              <div className="flex items-center gap-2">
-                <Checkbox id="important" checked={!!form.is_important} onCheckedChange={v => setField("is_important", v)} disabled={disabled} />
-                <Label htmlFor="important" className="cursor-pointer">Пометить как важное</Label>
+            {/* Чекбоксы — только в режиме редактирования/добавления */}
+            {mode !== "view" && (
+              <div className="col-span-2 flex gap-6">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="important" checked={!!form.is_important} onCheckedChange={v => setField("is_important", v)} />
+                  <Label htmlFor="important" className="cursor-pointer">Пометить как важное</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="rejected" checked={!!form.is_rejected} onCheckedChange={v => setField("is_rejected", v)} />
+                  <Label htmlFor="rejected" className="cursor-pointer">Отклонили</Label>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="rejected" checked={!!form.is_rejected} onCheckedChange={v => setField("is_rejected", v)} disabled={disabled} />
-                <Label htmlFor="rejected" className="cursor-pointer">Отклонили</Label>
-              </div>
-            </div>
+            )}
 
             {mode === "view" && form.purchase_link && (
               <div className="col-span-2">
