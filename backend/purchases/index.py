@@ -73,15 +73,18 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 INSERT INTO purchases (name, product_type_id, competitor_id, submission_date, quantity,
                     competitor_price, our_price, percent, our_coefficient, note, executor_id,
-                    purchase_link, is_important, is_rejected)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                    purchase_link, is_important, is_rejected,
+                    competitor_price_with_vat, our_price_with_vat, vat_rate)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             """, (
                 body.get('name'), body.get('product_type_id') or None, body.get('competitor_id') or None,
                 body.get('submission_date') or None, body.get('quantity') or None,
                 body.get('competitor_price') or None, body.get('our_price') or None,
                 body.get('percent') or None, body.get('our_coefficient') or None,
                 body.get('note'), body.get('executor_id') or None, body.get('purchase_link'),
-                body.get('is_important', False), body.get('is_rejected', False)
+                body.get('is_important', False), body.get('is_rejected', False),
+                body.get('competitor_price_with_vat') or None, body.get('our_price_with_vat') or None,
+                body.get('vat_rate') or 20
             ))
             conn.commit()
             new_id = cur.fetchone()['id']
@@ -92,7 +95,8 @@ def handler(event: dict, context) -> dict:
             cur.execute("""
                 UPDATE purchases SET name=%s, product_type_id=%s, competitor_id=%s, submission_date=%s,
                     quantity=%s, competitor_price=%s, our_price=%s, percent=%s, our_coefficient=%s,
-                    note=%s, executor_id=%s, purchase_link=%s, is_important=%s, is_rejected=%s, updated_at=NOW()
+                    note=%s, executor_id=%s, purchase_link=%s, is_important=%s, is_rejected=%s,
+                    competitor_price_with_vat=%s, our_price_with_vat=%s, vat_rate=%s, updated_at=NOW()
                 WHERE id=%s
             """, (
                 body.get('name'), body.get('product_type_id') or None, body.get('competitor_id') or None,
@@ -100,7 +104,9 @@ def handler(event: dict, context) -> dict:
                 body.get('competitor_price') or None, body.get('our_price') or None,
                 body.get('percent') or None, body.get('our_coefficient') or None,
                 body.get('note'), body.get('executor_id') or None, body.get('purchase_link'),
-                body.get('is_important', False), body.get('is_rejected', False), pid
+                body.get('is_important', False), body.get('is_rejected', False),
+                body.get('competitor_price_with_vat') or None, body.get('our_price_with_vat') or None,
+                body.get('vat_rate') or 20, pid
             ))
             conn.commit()
             return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': json.dumps({'ok': True})}

@@ -1,0 +1,4 @@
+ALTER TABLE purchases
+  ADD COLUMN IF NOT EXISTS competitor_price_with_vat NUMERIC(15,2),
+  ADD COLUMN IF NOT EXISTS our_price_with_vat NUMERIC(15,2),
+  ADD COLUMN IF NOT EXISTS vat_rate INTEGER DEFAULT 20;

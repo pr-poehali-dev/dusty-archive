@@ -24,6 +24,9 @@ export interface Purchase {
   purchase_link: string | null;
   is_important: boolean;
   is_rejected: boolean;
+  competitor_price_with_vat: number | null;
+  our_price_with_vat: number | null;
+  vat_rate: number | null;
 }
 
 export const emptyPurchase: Omit<Purchase, "id" | "product_type_name" | "competitor_name" | "executor_name"> = {
@@ -41,6 +44,9 @@ export const emptyPurchase: Omit<Purchase, "id" | "product_type_name" | "competi
   purchase_link: null,
   is_important: false,
   is_rejected: false,
+  competitor_price_with_vat: null,
+  our_price_with_vat: null,
+  vat_rate: 20,
 };
 
 export interface Refs {

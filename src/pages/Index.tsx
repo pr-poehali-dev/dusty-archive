@@ -246,6 +246,7 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
         onModeChange={setDialogMode}
         form={form}
         setField={setField}
+        setForm={setForm}
         refs={refs}
         canEdit={canEdit}
         onSave={handleSave}
