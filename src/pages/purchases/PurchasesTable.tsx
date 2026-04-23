@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -127,11 +128,48 @@ export default function PurchasesTable({
         </table>
       </div>
 
-      {/* Footer counter */}
-      <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-        <Icon name="Database" size={14} />
-        Всего закупок в базе: <span className="font-semibold text-slate-700">{total}</span>
+      {/* Footer */}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <Icon name="Database" size={14} />
+          Всего закупок в базе: <span className="font-semibold text-slate-700">{total}</span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleExport(purchases)}
+          disabled={purchases.length === 0}
+        >
+          <Icon name="Download" size={15} className="mr-1.5" />
+          Выгрузка в Excel
+        </Button>
       </div>
     </>
   );
+}
+
+function handleExport(purchases: Purchase[]) {
+  const rows = purchases.map(p => ({
+    "Наименование": p.name,
+    "Тип продукции": p.product_type_name || "",
+    "Конкурент": p.competitor_name || "",
+    "Дата подачи": p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "",
+    "Количество": p.quantity ?? "",
+    "Стоимость конкурента без НДС": p.competitor_price ?? "",
+    "Наша стоимость без НДС": p.our_price ?? "",
+    "%": p.percent ?? "",
+    "Наш коэффициент": p.our_coefficient ?? "",
+    "Исполнитель": p.executor_name || "",
+    "Ссылка": p.purchase_link || "",
+    "Примечание": p.note || "",
+    "Важное": p.is_important ? "Да" : "Нет",
+    "Отклонили": p.is_rejected ? "Да" : "Нет",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Закупки");
+
+  const date = new Date().toLocaleDateString("ru-RU").replace(/\./g, "-");
+  XLSX.writeFile(wb, `zakupki_${date}.xlsx`);
 }
