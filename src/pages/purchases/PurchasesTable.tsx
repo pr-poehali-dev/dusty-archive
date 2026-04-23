@@ -149,27 +149,46 @@ export default function PurchasesTable({
 }
 
 function handleExport(purchases: Purchase[]) {
-  const rows = purchases.map(p => ({
-    "Наименование": p.name,
-    "Тип продукции": p.product_type_name || "",
-    "Конкурент": p.competitor_name || "",
-    "Дата подачи": p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "",
-    "Количество": p.quantity ?? "",
-    "Стоимость конкурента без НДС": p.competitor_price ?? "",
-    "Наша стоимость без НДС": p.our_price ?? "",
-    "%": p.percent ?? "",
-    "Наш коэффициент": p.our_coefficient ?? "",
-    "Исполнитель": p.executor_name || "",
-    "Ссылка": p.purchase_link || "",
-    "Примечание": p.note || "",
-    "Важное": p.is_important ? "Да" : "Нет",
-    "Отклонили": p.is_rejected ? "Да" : "Нет",
-  }));
+  const headers = [
+    "Наименование", "Тип продукции", "Конкурент", "Дата подачи",
+    "Количество", "Стоимость конкурента без НДС", "Наша стоимость без НДС",
+    "%", "Наш коэффициент", "Исполнитель", "Ссылка", "Примечание", "Отклонили",
+  ];
 
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const rows = purchases.map(p => [
+    p.name,
+    p.product_type_name || "",
+    p.competitor_name || "",
+    p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "",
+    p.quantity ?? "",
+    p.competitor_price ?? "",
+    p.our_price ?? "",
+    p.percent ?? "",
+    p.our_coefficient ?? "",
+    p.executor_name || "",
+    p.purchase_link || "",
+    p.note || "",
+    p.is_rejected ? "Да" : "Нет",
+  ]);
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+  // Цвет строк: зелёный — важное, красный — отклонено
+  purchases.forEach((p, i) => {
+    if (!p.is_important && !p.is_rejected) return;
+    const fill = p.is_important
+      ? { fgColor: { rgb: "C6EFCE" } }  // зелёный
+      : { fgColor: { rgb: "FFCCCC" } };  // красный
+    headers.forEach((_, colIdx) => {
+      const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: colIdx });
+      if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
+      ws[cellRef].s = { fill: { patternType: "solid", ...fill } };
+    });
+  });
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Закупки");
 
   const date = new Date().toLocaleDateString("ru-RU").replace(/\./g, "-");
-  XLSX.writeFile(wb, `zakupki_${date}.xlsx`);
+  XLSX.writeFile(wb, `zakupki_${date}.xlsx`, { cellStyles: true });
 }
