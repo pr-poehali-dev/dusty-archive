@@ -172,7 +172,7 @@ export default function PurchaseDialog({
                   type="number"
                   value={
                     form.competitor_price && form.our_coefficient && form.our_price
-                      ? Math.round((form.competitor_price * form.our_coefficient / form.our_price) * 10000) / 10000
+                      ? Math.round((form.competitor_price * form.our_coefficient / form.our_price) * 100) / 100
                       : ""
                   }
                   disabled
