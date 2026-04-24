@@ -99,7 +99,7 @@ export default function PurchasesTable({
             {purchases.map(p => {
               const isImportant = p.is_important;
               const isRejected = p.is_rejected;
-              const isLosing = !isRejected && p.our_price != null && p.competitor_price != null && p.our_price > p.competitor_price;
+              const isLosing = !isRejected && p.our_price != null && p.competitor_price != null && Number(p.our_price) > Number(p.competitor_price);
               const bg = isImportant ? "bg-green-50 hover:bg-green-100" : isRejected ? "bg-red-50 hover:bg-red-100" : isLosing ? "bg-pink-50 hover:bg-pink-100" : "hover:bg-slate-50";
               const selected = selectedRow?.id === p.id ? "ring-2 ring-inset ring-blue-400" : "";
               return (
