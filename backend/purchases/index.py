@@ -28,6 +28,45 @@ def handler(event: dict, context) -> dict:
         if method == 'GET':
             action = params.get('action', 'list')
 
+            if action == 'stats':
+                cur.execute("SELECT COUNT(*) as total FROM purchases")
+                total = cur.fetchone()['total']
+
+                cur.execute("SELECT COUNT(*) as won FROM purchases WHERE our_price IS NOT NULL AND competitor_price IS NOT NULL AND our_price <= competitor_price")
+                won = cur.fetchone()['won']
+
+                cur.execute("SELECT COUNT(*) as lost FROM purchases WHERE our_price IS NOT NULL AND competitor_price IS NOT NULL AND our_price > competitor_price")
+                lost = cur.fetchone()['lost']
+
+                cur.execute("""
+                    SELECT c.name, COUNT(*) as cnt
+                    FROM purchases p
+                    JOIN competitors c ON c.id = p.competitor_id
+                    GROUP BY c.id, c.name
+                    ORDER BY cnt DESC
+                    LIMIT 1
+                """)
+                top_row = cur.fetchone()
+                top_competitor = dict(top_row) if top_row else None
+
+                cur.execute("""
+                    SELECT COUNT(*) as this_month
+                    FROM purchases
+                    WHERE DATE_TRUNC('month', COALESCE(submission_date, created_at::date)) = DATE_TRUNC('month', CURRENT_DATE)
+                """)
+                this_month = cur.fetchone()['this_month']
+
+                return {
+                    'statusCode': 200, 'headers': CORS_HEADERS,
+                    'body': json.dumps({
+                        'total': total,
+                        'won': won,
+                        'lost': lost,
+                        'top_competitor': top_competitor,
+                        'this_month': this_month
+                    }, ensure_ascii=False, default=str)
+                }
+
             if action == 'refs':
                 cur.execute("SELECT id, name FROM product_types ORDER BY name")
                 product_types = [dict(r) for r in cur.fetchall()]

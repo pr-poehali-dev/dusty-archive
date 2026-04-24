@@ -10,6 +10,7 @@ import type { Purchase, Refs } from "./purchases/types";
 import PurchasesTable from "./purchases/PurchasesTable";
 import PurchaseDialog from "./purchases/PurchaseDialog";
 import RefsDialog from "./purchases/RefsDialog";
+import StatsDialog from "./purchases/StatsDialog";
 
 interface IndexProps {
   sessionId: string;
@@ -40,6 +41,7 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [refsOpen, setRefsOpen] = useState(false);
   const [refsTab, setRefsTab] = useState("executors");
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const [refItems, setRefItems] = useState<Record<string, string | number>[]>([]);
   const [refEdit, setRefEdit] = useState<{ id: number | null; value: string }>({ id: null, value: "" });
@@ -182,6 +184,10 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setStatsOpen(true)}>
+              <Icon name="BarChart2" size={16} className="mr-1" />
+              Статистика
+            </Button>
             {canEdit && (
               <Button variant="outline" size="sm" onClick={openRefs}>
                 <Icon name="BookOpen" size={16} className="mr-1" />
@@ -267,6 +273,8 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
         onRefSave={handleRefSave}
         onRefDelete={handleRefDelete}
       />
+
+      <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} />
     </div>
   );
 }

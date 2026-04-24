@@ -13,6 +13,13 @@
       "path": "/?action=refs",
       "expectedStatus": 200,
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get stats",
+      "method": "GET",
+      "path": "/?action=stats",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
     }
   ]
 }
