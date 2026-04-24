@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +41,6 @@ export default function PurchaseDialog({
   onSave, deleteConfirm, onDeleteConfirmChange, selectedRow, onDelete,
 }: PurchaseDialogProps) {
   const disabled = mode === "view";
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const handleVatChange = (vatRate: number) => {
     setForm(prev => {
@@ -124,17 +122,9 @@ export default function PurchaseDialog({
                   value={form.submission_date?.slice(0, 10) || ""}
                   onChange={e => setField("submission_date", e.target.value || null)}
                   disabled={disabled}
-                  className="pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
+                  className="pr-9 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-9 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                 />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  disabled={disabled}
-                  onClick={() => dateInputRef.current?.click()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:pointer-events-none"
-                >
-                  <Icon name="Calendar" size={16} />
-                </button>
+                <Icon name="Calendar" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             </div>
             <div>
