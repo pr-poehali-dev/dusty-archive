@@ -141,8 +141,8 @@ export default function PurchasesTable({
           onClick={() => handleExport(purchases)}
           disabled={purchases.length === 0}
         >
-          <Icon name="Download" size={15} className="mr-1.5" />
-          Выгрузка в Excel
+          <Icon name="Download" size={15} className="sm:mr-1.5" />
+          <span className="hidden sm:inline">Выгрузка в Excel</span>
         </Button>
       </div>
     </>

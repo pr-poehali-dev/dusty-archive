@@ -185,13 +185,13 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setStatsOpen(true)}>
-              <Icon name="BarChart2" size={16} className="mr-1" />
-              Статистика
+              <Icon name="BarChart2" size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Статистика</span>
             </Button>
             {canEdit && (
               <Button variant="outline" size="sm" onClick={openRefs}>
-                <Icon name="BookOpen" size={16} className="mr-1" />
-                Справочники
+                <Icon name="BookOpen" size={16} className="sm:mr-1" />
+                <span className="hidden sm:inline">Справочники</span>
               </Button>
             )}
             <DropdownMenu>
