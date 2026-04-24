@@ -115,7 +115,10 @@ export default function PurchaseDialog({
             {/* Дата / Количество */}
             <div>
               <Label>Дата подачи</Label>
-              <Input type="date" value={form.submission_date?.slice(0, 10) || ""} onChange={e => setField("submission_date", e.target.value || null)} disabled={disabled} className="mt-1" />
+              <div className="relative mt-1">
+                <Input type="date" value={form.submission_date?.slice(0, 10) || ""} onChange={e => setField("submission_date", e.target.value || null)} disabled={disabled} className="pr-9 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer" />
+                <Icon name="Calendar" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
             <div>
               <Label>Количество</Label>
