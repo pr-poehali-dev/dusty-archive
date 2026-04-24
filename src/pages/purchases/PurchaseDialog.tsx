@@ -124,7 +124,7 @@ export default function PurchaseDialog({
                   value={form.submission_date?.slice(0, 10) || ""}
                   onChange={e => setField("submission_date", e.target.value || null)}
                   disabled={disabled}
-                  className="pr-9"
+                  className="pr-9 [&::-webkit-calendar-picker-indicator]:hidden"
                 />
                 <button
                   type="button"
