@@ -116,8 +116,26 @@ export default function PurchaseDialog({
             <div>
               <Label>Дата подачи</Label>
               <div className="relative mt-1">
-                <Input type="date" value={form.submission_date?.slice(0, 10) || ""} onChange={e => setField("submission_date", e.target.value || null)} disabled={disabled} className="pr-9 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer" />
-                <Icon name="Calendar" size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Input
+                  id="submission_date_input"
+                  type="date"
+                  value={form.submission_date?.slice(0, 10) || ""}
+                  onChange={e => setField("submission_date", e.target.value || null)}
+                  disabled={disabled}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  disabled={disabled}
+                  onClick={() => {
+                    const el = document.getElementById("submission_date_input") as HTMLInputElement | null;
+                    el?.showPicker?.();
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:pointer-events-none"
+                >
+                  <Icon name="Calendar" size={16} />
+                </button>
               </div>
             </div>
             <div>
