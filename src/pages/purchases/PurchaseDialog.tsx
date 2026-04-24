@@ -117,7 +117,6 @@ export default function PurchaseDialog({
               <Label>Дата подачи</Label>
               <div className="relative mt-1">
                 <Input
-                  ref={dateInputRef}
                   type="date"
                   value={form.submission_date?.slice(0, 10) || ""}
                   onChange={e => setField("submission_date", e.target.value || null)}
