@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,14 @@ export default function PurchasesTable({
   selectedRow, onRowClick, onRowDoubleClick,
   canEdit, onAdd, onEdit, onDeleteRequest,
 }: PurchasesTableProps) {
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <>
       {/* Toolbar */}
@@ -58,16 +67,16 @@ export default function PurchasesTable({
         {canEdit && (
           <div className="flex gap-2">
             <Button size="sm" className="text-white" onClick={onAdd}>
-              <Icon name="Plus" size={16} className="mr-1" />
-              Добавить
+              <Icon name="Plus" size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Добавить</span>
             </Button>
             <Button size="sm" variant="outline" onClick={onEdit}>
-              <Icon name="Pencil" size={16} className="mr-1" />
-              Изменить
+              <Icon name="Pencil" size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Изменить</span>
             </Button>
             <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300" onClick={onDeleteRequest}>
-              <Icon name="Trash2" size={16} className="mr-1" />
-              Удалить
+              <Icon name="Trash2" size={16} className="sm:mr-1" />
+              <span className="hidden sm:inline">Удалить</span>
             </Button>
           </div>
         )}
@@ -145,6 +154,15 @@ export default function PurchasesTable({
           <span className="hidden sm:inline">Выгрузка в Excel</span>
         </Button>
       </div>
+
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-50 bg-primary text-primary-foreground rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:opacity-90 transition-opacity"
+        >
+          <Icon name="ChevronUp" size={20} />
+        </button>
+      )}
     </>
   );
 }
