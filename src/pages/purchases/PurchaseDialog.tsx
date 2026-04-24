@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,7 @@ export default function PurchaseDialog({
   onSave, deleteConfirm, onDeleteConfirmChange, selectedRow, onDelete,
 }: PurchaseDialogProps) {
   const disabled = mode === "view";
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const handleVatChange = (vatRate: number) => {
     setForm(prev => {
@@ -117,7 +119,7 @@ export default function PurchaseDialog({
               <Label>Дата подачи</Label>
               <div className="relative mt-1">
                 <Input
-                  id="submission_date_input"
+                  ref={dateInputRef}
                   type="date"
                   value={form.submission_date?.slice(0, 10) || ""}
                   onChange={e => setField("submission_date", e.target.value || null)}
@@ -128,10 +130,7 @@ export default function PurchaseDialog({
                   type="button"
                   tabIndex={-1}
                   disabled={disabled}
-                  onClick={() => {
-                    const el = document.getElementById("submission_date_input") as HTMLInputElement | null;
-                    el?.showPicker?.();
-                  }}
+                  onClick={() => dateInputRef.current?.click()}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:pointer-events-none"
                 >
                   <Icon name="Calendar" size={16} />
