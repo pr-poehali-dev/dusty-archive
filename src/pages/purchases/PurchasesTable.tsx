@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import type { Purchase, ProductType } from "./types";
-import type { AppSettings } from "@/hooks/useSettings";
+import type { AppSettings, ColumnKey } from "@/hooks/useSettings";
 
 interface PurchasesTableProps {
   purchases: Purchase[];
@@ -27,6 +27,8 @@ interface PurchasesTableProps {
   settings?: AppSettings;
 }
 
+const ALL_COLUMN_KEYS: ColumnKey[] = ["product_type", "competitor", "submission_date", "quantity", "competitor_price", "our_price", "percent", "executor"];
+
 export default function PurchasesTable({
   purchases, loading, total,
   search, onSearchChange,
@@ -36,6 +38,10 @@ export default function PurchasesTable({
   settings,
 }: PurchasesTableProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const visibleCols: ColumnKey[] = settings?.visibleColumns ?? ALL_COLUMN_KEYS;
+  const col = (key: ColumnKey) => visibleCols.includes(key);
+  const colCount = 1 + visibleCols.length;
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -91,22 +97,22 @@ export default function PurchasesTable({
           <thead>
             <tr className="border-b bg-slate-50">
               <th className="text-left px-4 py-3 font-semibold text-slate-700 min-w-[220px]">Наименование</th>
-              <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Тип продукции</th>
-              <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Конкурент</th>
-              <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[110px]">Дата подачи</th>
-              <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[80px]">Кол-во</th>
-              <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Цена конк.</th>
-              <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Наша цена</th>
-              <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[70px]">%</th>
-              <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[150px]">Исполнитель</th>
+              {col("product_type") && <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Тип продукции</th>}
+              {col("competitor") && <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[140px]">Конкурент</th>}
+              {col("submission_date") && <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[110px]">Дата подачи</th>}
+              {col("quantity") && <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[80px]">Кол-во</th>}
+              {col("competitor_price") && <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Цена конк.</th>}
+              {col("our_price") && <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[120px]">Наша цена</th>}
+              {col("percent") && <th className="text-right px-3 py-3 font-semibold text-slate-700 min-w-[70px]">%</th>}
+              {col("executor") && <th className="text-left px-3 py-3 font-semibold text-slate-700 min-w-[150px]">Исполнитель</th>}
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={9} className="text-center py-10 text-slate-400">Загрузка...</td></tr>
+              <tr><td colSpan={colCount} className="text-center py-10 text-slate-400">Загрузка...</td></tr>
             )}
             {!loading && purchases.length === 0 && (
-              <tr><td colSpan={9} className="text-center py-10 text-slate-400">Закупки не найдены</td></tr>
+              <tr><td colSpan={colCount} className="text-center py-10 text-slate-400">Закупки не найдены</td></tr>
             )}
             {purchases.map(p => {
               const isImportant = p.is_important;
@@ -133,14 +139,14 @@ export default function PurchasesTable({
                     {p.is_important && <Badge className="ml-2 bg-green-200 text-green-800 text-xs">Важное</Badge>}
                     {p.is_rejected && <Badge className="ml-2 bg-red-200 text-red-800 text-xs">Отклонено</Badge>}
                   </td>
-                  <td className="px-3 py-2.5 text-slate-600">{p.product_type_name || "—"}</td>
-                  <td className="px-3 py-2.5 text-slate-600">{p.competitor_name || "—"}</td>
-                  <td className="px-3 py-2.5 text-slate-600">{p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "—"}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">{p.quantity != null ? Number(p.quantity).toLocaleString("ru-RU") : "—"}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">{p.competitor_price != null ? Number(p.competitor_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">{p.our_price != null ? Number(p.our_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>
-                  <td className="px-3 py-2.5 text-right text-slate-600">{p.percent != null ? `${Number(p.percent).toFixed(2)}%` : "—"}</td>
-                  <td className="px-3 py-2.5 text-slate-600">{p.executor_name || "—"}</td>
+                  {col("product_type") && <td className="px-3 py-2.5 text-slate-600">{p.product_type_name || "—"}</td>}
+                  {col("competitor") && <td className="px-3 py-2.5 text-slate-600">{p.competitor_name || "—"}</td>}
+                  {col("submission_date") && <td className="px-3 py-2.5 text-slate-600">{p.submission_date ? new Date(p.submission_date).toLocaleDateString("ru-RU") : "—"}</td>}
+                  {col("quantity") && <td className="px-3 py-2.5 text-right text-slate-600">{p.quantity != null ? Number(p.quantity).toLocaleString("ru-RU") : "—"}</td>}
+                  {col("competitor_price") && <td className="px-3 py-2.5 text-right text-slate-600">{p.competitor_price != null ? Number(p.competitor_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>}
+                  {col("our_price") && <td className="px-3 py-2.5 text-right text-slate-600">{p.our_price != null ? Number(p.our_price).toLocaleString("ru-RU", { minimumFractionDigits: 2 }) : "—"}</td>}
+                  {col("percent") && <td className="px-3 py-2.5 text-right text-slate-600">{p.percent != null ? `${Number(p.percent).toFixed(2)}%` : "—"}</td>}
+                  {col("executor") && <td className="px-3 py-2.5 text-slate-600">{p.executor_name || "—"}</td>}
                 </tr>
               );
             })}
