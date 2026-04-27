@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import type { Purchase, ProductType } from "./types";
+import type { AppSettings } from "@/hooks/useSettings";
 
 interface PurchasesTableProps {
   purchases: Purchase[];
@@ -23,6 +24,7 @@ interface PurchasesTableProps {
   onAdd: () => void;
   onEdit: () => void;
   onDeleteRequest: () => void;
+  settings?: AppSettings;
 }
 
 export default function PurchasesTable({
@@ -31,6 +33,7 @@ export default function PurchasesTable({
   filterType, onFilterTypeChange, productTypes,
   selectedRow, onRowClick, onRowDoubleClick,
   canEdit, onAdd, onEdit, onDeleteRequest,
+  settings,
 }: PurchasesTableProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -109,12 +112,19 @@ export default function PurchasesTable({
               const isImportant = p.is_important;
               const isRejected = p.is_rejected;
               const isLosing = !isRejected && p.our_price != null && p.competitor_price != null && Number(p.our_price) > Number(p.competitor_price);
-              const bg = isImportant ? "bg-green-50 hover:bg-green-100" : isRejected ? "bg-red-50 hover:bg-red-100" : isLosing ? "bg-pink-50 hover:bg-pink-100" : "hover:bg-slate-50";
+              const bgColor = isImportant
+                ? (settings?.importantColor ?? "#f0fdf4")
+                : isRejected
+                ? (settings?.rejectedColor ?? "#fef2f2")
+                : isLosing
+                ? (settings?.losingColor ?? "#fce7f3")
+                : undefined;
               const selected = selectedRow?.id === p.id ? "ring-2 ring-inset ring-blue-400" : "";
               return (
                 <tr
                   key={p.id}
-                  className={`border-b cursor-pointer transition-colors ${bg} ${selected}`}
+                  className={`border-b cursor-pointer transition-colors hover:brightness-95 ${selected}`}
+                  style={bgColor ? { backgroundColor: bgColor } : undefined}
                   onClick={() => onRowClick(p)}
                   onDoubleClick={() => onRowDoubleClick(p)}
                 >

@@ -11,6 +11,8 @@ import PurchasesTable from "./purchases/PurchasesTable";
 import PurchaseDialog from "./purchases/PurchaseDialog";
 import RefsDialog from "./purchases/RefsDialog";
 import StatsDialog from "./purchases/StatsDialog";
+import SettingsDialog from "./purchases/SettingsDialog";
+import { useSettings } from "@/hooks/useSettings";
 
 interface IndexProps {
   sessionId: string;
@@ -42,6 +44,8 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
   const [refsOpen, setRefsOpen] = useState(false);
   const [refsTab, setRefsTab] = useState("executors");
   const [statsOpen, setStatsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { settings, saveSettings } = useSettings();
 
   const [refItems, setRefItems] = useState<Record<string, string | number>[]>([]);
   const [refEdit, setRefEdit] = useState<{ id: number | null; value: string }>({ id: null, value: "" });
@@ -214,6 +218,10 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
                     Пользователи
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <Icon name="Settings" size={14} className="mr-2" />
+                  Настройки
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
                   <Icon name="LogOut" size={14} className="mr-2" />
                   Выйти
@@ -242,6 +250,7 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
           onAdd={openAdd}
           onEdit={openEdit}
           onDeleteRequest={handleDeleteRequest}
+          settings={settings}
         />
       </main>
 
@@ -275,6 +284,13 @@ export default function App({ sessionId, currentUser, onLogout }: IndexProps) {
       />
 
       <StatsDialog open={statsOpen} onClose={() => setStatsOpen(false)} />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onSave={saveSettings}
+      />
     </div>
   );
 }
